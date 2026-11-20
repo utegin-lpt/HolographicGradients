@@ -1,4 +1,4 @@
-# Single-shot holographic gradients for training wavefronts through disorder — notebooks
+# Single-shot holographic gradients for training wavefronts through disorder 
 
 Digital-twin notebooks for the off-axis holography study: a phase-only SLM, a ground-glass surface diffuser and a camera
 with a tilted reference beam. Every camera frame gives the **complex** output field, so the error term of each gradient
