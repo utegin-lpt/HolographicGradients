@@ -1,5 +1,12 @@
 # Single-shot holographic gradients for training wavefronts through disorder — notebooks
 
+<p align="center">
+  <img src="holographic_gradients.gif" width="640" alt="Holographic gradients on the bench: image formation, recalibration under drift, thick diffuser, optical ViZDoom">
+</p>
+<p align="center"><sub>On the bench, one off-axis hologram per training step: an image forming through the diffuser,
+recalibration while the diffuser drifts, a thick diffuser modelled with multiple screens, and VizDoom played
+all-optically. The notebooks below recreate these experiments in a digital twin.</sub></p>
+
 Digital-twin notebooks for the off-axis holography study: a phase-only SLM, a ground-glass surface diffuser and a camera
 with a tilted reference beam. Every camera frame gives the **complex** output field, so the error term of each gradient
 is **measured**; only the backward step (the adjoint) needs a model.
