@@ -1,4 +1,4 @@
-# Single-shot holographic gradients for training wavefronts through disorder — notebooks
+# Single-shot holographic gradients for training wavefronts through disorder 
 
 <p align="center">
   <img src="holographic_gradients.gif" width="640" alt="Holographic gradients on the bench: image formation, recalibration under drift, thick diffuser, optical ViZDoom">
