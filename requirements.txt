@@ -1,0 +1,8 @@
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+jupyter
+# Mode 2 / Mode 3 notebooks
+vizdoom==1.3.1      # the bench's VizDoom build (game outcomes differ between builds)
+qrcode>=7.4         # encryption: QR plaintexts
+opencv-python>=4.8  # encryption: QR reading

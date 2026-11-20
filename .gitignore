@@ -1,0 +1,4 @@
+# datasets are generated or downloaded by the notebooks
+data/
+.ipynb_checkpoints/
+__pycache__/
