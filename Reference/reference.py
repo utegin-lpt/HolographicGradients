@@ -81,9 +81,12 @@ REF_COUNTS = 300                                      # flat reference on the re
 REF_SCALE = np.sqrt(REF_COUNTS / np.mean(np.abs(ReferenceArm().forward(FLAT)[W90, W90])**2))
 MODEL = ReferenceArm(scale=REF_SCALE)                 # the calibrated model of the reference arm (what the methods know)
 # The hidden true reference arm differs from the model by a few geometry errors, sized so that the detector offsets they
-# leave (about 0.25 score spreads) are those of the bench's Basic session. The model then predicts measured interference
-# with an accuracy of about 0.97; the bench's check probes read 0.84-0.86, where measurement noise takes a larger part.
+# leave are about 0.25 score spreads. The model then predicts measured interference with an accuracy of about 0.97; the
+# bench's check probes read 0.84-0.86, where measurement noise takes a larger part.
 TRUE_REFERENCE = dict(z=40.75e-3, aberration=dict(astig=0.126, coma=0.105, spherical=0.066), shift=(0.15, -0.105))
+# The bench refitted its reference model at each session. In the Basic session (2026-10-14) the refitted model took the
+# same decision as the hardware on 98 % of the test frames, so for Basic the twin's true arm is the model itself.
+EXACT_REFERENCE = dict(z=40e-3, aberration=None, shift=(0.0, 0.0))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -141,11 +144,11 @@ class Bench:
     """
 
     def __init__(self, seed=0, obj_counts=14, visibility=0.25, exposures=5, phase_deg=5.0, amp=0.05, read_noise=3.0,
-                 sig_cell=0.0):
+                 sig_cell=0.0, reference=TRUE_REFERENCE):
         g = np.random.default_rng(seed)
         self.rng = np.random.default_rng(seed + 1)
         self._obj = tw.ObjectArm(tw.random_screen(g), tw.ABERRATION)
-        self._ref = ReferenceArm(scale=REF_SCALE, **TRUE_REFERENCE)
+        self.set_reference(reference)
         x = np.exp(2j * np.pi * g.random((5, tw.NC, tw.NC)))
         self.so = np.sqrt(obj_counts / np.mean(np.abs(self._obj.forward(x)[:, W90, W90])**2))
         self.visibility, self.exposures, self.sig_cell = visibility, exposures, sig_cell
@@ -154,6 +157,10 @@ class Bench:
         self.carrier = np.exp(2j * np.pi * FC * (xx + y) / NU).astype(np.complex64)
         self.R0_model = MODEL.forward(FLAT)
         self.reads = 0
+
+    def set_reference(self, arm):
+        # the hidden true reference arm (a TRUE_REFERENCE-like dict); the methods only ever know MODEL
+        self._ref = ReferenceArm(scale=REF_SCALE, **arm)
 
     def frame(self, phases, E):
         """One read per input: the mean of `exposures` raw camera frames (counts, NU x NU) for data phases
@@ -177,6 +184,7 @@ class Bench:
         raw, demod = [], []
         for i in range(0, len(phases), chunk):
             I = self.frame(phases[i:i + chunk], E)
+            self.last_frame = I[-1]                                                  # for the episode GIFs
             raw.append(np.real(I.reshape(len(I), -1) @ detectors.masks.T) / UP**2)
             d = demodulate(I)[..., W90, W90].reshape(len(I), -1)
             demod.append(np.real(d) @ detectors.window.reshape(len(detectors.corners), -1).T)
@@ -226,7 +234,8 @@ def tv_grad(E, eps=1e-6):
     return g
 
 
-def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.02, seed=0, E0=None, sigma=None):
+def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.02, seed=0, E0=None, sigma=None,
+                    trace=None, trace_every=5):
     """Train E offline on measured fields O (n, n_pixels) at the detector pixels.
 
     Loss: class-weighted cross-entropy of the scores (divided by their spread at E = FLAT) plus a total-variation
@@ -234,7 +243,8 @@ def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.
     E starts flat; Adam on Re E and Im E with a cosine learning-rate schedule (as on the bench), then the projection
     |E| <= 1. The epoch with the best validation accuracy predicted by the model is kept. Returns E and the training
     history (loss, validation accuracy per epoch). E0 and sigma (the score scale) continue a training from a given
-    reference, as in the joint training of both arms.
+    reference, as in the joint training of both arms. trace: a list that receives (batch step, validation balanced
+    accuracy in the model) from step 0 to the end of the first epoch, every trace_every batches.
     """
     n_cls = det.to_box.shape[1]
     w = len(y) / (n_cls * np.bincount(y, minlength=n_cls))
@@ -243,6 +253,9 @@ def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.
     E, rng = (FLAT if E0 is None else E0).copy(), np.random.default_rng(seed)
     history, best = [], (-1, None)
     tv_weight = None
+    validate = lambda E: balanced_accuracy(det.scores(O_val, det.on_pixels(MODEL.forward(E))).argmax(1), y_val)
+    if trace is not None:
+        trace.append((0, validate(E)))
     for epoch in range(epochs):
         re.lr = re.lr_final = im.lr = im.lr_final = 0.5 * lr * (1 + np.cos(np.pi * epoch / epochs))
         order, losses = rng.permutation(len(y)), []
@@ -260,6 +273,9 @@ def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.
             E = re.step(E.real, g.real) + 1j * im.step(E.imag, g.imag)
             E = E / np.maximum(1, np.abs(E))                                                         # |E| <= 1
             losses.append(L)
+            step = b // batch + 1
+            if trace is not None and epoch == 0 and (step % trace_every == 0 or b + batch >= len(y)):
+                trace.append((step, validate(E)))
         val = np.mean(det.scores(O_val, det.on_pixels(MODEL.forward(E))).argmax(1) == y_val)
         history.append((np.mean(losses), val))
         if val > best[0]:
@@ -270,3 +286,43 @@ def train_reference(O, y, O_val, y_val, det, epochs=30, batch=50, lr=0.05, tv=0.
 def balanced_accuracy(pred, y):
     """Mean recall over the classes."""
     return np.mean([np.mean(pred[y == k] == k) for k in np.unique(y)])
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Episode GIF: the game, what the SLM shows, what the camera sees
+# ----------------------------------------------------------------------------------------------------------------------
+def save_episode_gif(path, steps, det, read, title, actions=("LEFT", "RIGHT", "ATTACK"), fps=4):
+    """steps: list of (game frame RGB, SLM phase 32 x 32, camera frame NU x NU, scores (3,), action).
+    read "demod": the camera panel shows Re(O R^*) demodulated on the readout window; "raw": the raw camera frame on
+    the readout window (the fringe-matched masks read it). The chosen detector is drawn bold."""
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+    from PIL import Image
+    fig, ax = plt.subplots(1, 3, figsize=(8.4, 2.9), dpi=80, gridspec_kw=dict(width_ratios=[1.33, 1, 1]))
+    frames = []
+    w = slice(W90.start * UP, W90.stop * UP)
+    for i, (game, phase, cam, s, a) in enumerate(steps):
+        for x in ax:
+            x.clear(); x.set_xticks([]); x.set_yticks([])
+        ax[0].imshow(game); ax[0].set_title(f"game, step {i}: {actions[a]}", fontsize=8)
+        ax[1].imshow(phase, cmap="twilight", vmin=0, vmax=2 * np.pi); ax[1].set_title("SLM phase (object arm)", fontsize=8)
+        if read == "demod":
+            img, k = np.real(demodulate(cam)[W90, W90]), 1
+            v = np.abs(img).max() + 1e-9
+            ax[2].imshow(img, cmap="RdBu_r", vmin=-v, vmax=v); ax[2].set_title("camera: Re(O R*), demodulated", fontsize=8)
+        else:
+            img, k = cam[w, w], UP
+            ax[2].imshow(img, cmap="gray"); ax[2].set_title("camera: raw frame (fringe-matched read)", fontsize=8)
+        other = "k" if read == "demod" else "w"
+        for c, (r, cc) in enumerate(det.corners):
+            colour = "darkorange" if c == a else other
+            ax[2].add_patch(Rectangle((k * cc - 0.5, k * r - 0.5), k * det.size, k * det.size, fill=False,
+                                      color=colour, lw=2.5 if c == a else 0.8))
+            ax[2].text(k * cc + k, k * r + 5 * k, actions[c], color=colour, fontsize=7)
+        fig.suptitle(title, fontsize=9)
+        fig.tight_layout()
+        fig.canvas.draw()
+        frames.append(Image.fromarray(np.asarray(fig.canvas.buffer_rgba())[..., :3]).quantize(128))
+    plt.close(fig)
+    frames += [frames[-1]] * 4
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0, optimize=True)
