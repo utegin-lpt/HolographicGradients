@@ -31,16 +31,16 @@ energy jitter, shot and read noise, a 12-bit camera, reference-model error, the 
 | `Object/` | `Imaging.ipynb` | yin-yang, clock tower (bench targets) and grating through the diffuser, 300 iterations; model vs TM (Fig. 2e,f); a stored TM vs a refitted model after the diffuser moves; a grating formed while the diffuser drifts slowly (frozen model vs refits, Fig. 4a–d) | ~4 min |
 | `Object/` | `Computing.ipynb` | all-optical 10-class classifier (trained phase mask, 10 detector regions), in situ (Fig. 2g–i) | ~2 min |
 | `Object/` | `Scaling.ipynb` | 16² to 128² SLM cells: 10-probe model vs TMs from $N$ and $3N$ patterns (Supplementary Note 6, Fig. S9) | ~20 min (fast plan) |
-| `Reference/` | `Computing.ipynb` | one frame, two reads (fringe-matched masks of Eq. 7 vs demodulation); reference-arm model; offline-trained reference playing VizDoom *Basic* (plain reference, demodulated read; Fig. 3b,c) and *Defend the Center* (plain reference, raw-frame read; Fig. 3d) in closed loop; twin set like the bench build, with a twin-vs-bench table | ~17 min |
+| `Reference/` | `Computing.ipynb` | one frame, two reads (fringe-matched masks of Eq. 7 vs demodulation); reference-arm model; offline-trained reference playing VizDoom *Basic* (demodulated read, the bench's refitted reference model; Fig. 3b,c) and *Defend the Center* (raw-frame read, the bench's detector offsets; Fig. 3d) in closed loop; twin set like the bench build, with a twin-vs-bench table | ~17 min |
 | `Reference/` | `Encryption.ipynb` | two-key QR encryption (version-2 codes, the two messages of the SI): key on the reference arm, ciphertext through the 10-probe object model and in situ, one-frame decryption, three attacks (Fig. 3g,h) | ~1 min |
-| `Joint/` | `Computing.ipynb` | joint training of both arms on VizDoom *Defend the Center* (Fig. 3d–f; SI Note 4D): θ in situ through the ten-probe object model, E offline on the fields just measured, all-optical raw-frame validation, test and closed loop; GIF of the training | ~25 min |
+| `Joint/` | `Computing.ipynb` | joint training of both arms on VizDoom *Defend the Center* (Fig. 3d–f; SI Note 4D): θ in situ through the ten-probe object model, E offline on the fields just measured, all-optical raw-frame validation, test and closed loop with the bench's detector offsets; GIFs of the training and of one episode | ~27 min |
 
 \*laptop CPU. The `Object/` notebooks share the optics, the twin bench and the methods in `Object/twin.py` (each function
 names its equation in the manuscript); each notebook shows the steps of its experiment, and the focusing, imaging and
 scaling runs are saved as GIFs in `Object/gifs/` (measured intensity per iteration next to the metric). The `Reference/`
 notebooks use `Object/twin.py` and `Reference/reference.py` (reference arm, two-arm bench with raw camera frames, offline
 training); their GIFs (closed-loop game episodes) are in `Reference/gifs/`. The `Joint/` notebook uses
-the same two modules.
+the same two modules; its GIFs are in `Joint/gifs/`.
 
 ## Results of the digital twin
 
@@ -51,10 +51,10 @@ the same two modules.
 | Drift during training (decorrelation 0.3) | focusing: frozen model keeps 34 % of the drift-free η, refits (2 probes + the training frame every 5 iterations) 93 %; grating (mean image, last 10 iterations): no drift 22.3 dB, frozen 7.6 dB, refits 21.4 dB |
 | FashionMNIST, all-optical | test accuracy 0.133 (untrained mask) → 0.745 (mask trained in situ); digital logistic regression 0.820 |
 | Scaling, 16² → 128² cells | 10-probe model: accuracy 0.85–0.86 at every size, η 90 → 229, grating 9.4 → 18.8 dB per frame; TM from 3N patterns (768–12,288): accuracy 0.99, 1.2–1.4 × the model's η (fast plan, one seed) |
-| VizDoom *Basic*, all-optical | plain reference, demodulated read, the bench's soft detectors, no offset correction: test 0.889, recall LEFT / RIGHT / ATTACK 1.00 / 0.75 / 1.00 (bench 0.987); closed loop 98/100 unseen episodes won, as fast as the oracle (bench 100/100, +0.1 steps); the raw-frame read takes the same decision on 98.6 % of the frames |
-| VizDoom *Defend the Center*, all-optical | plain reference, raw-frame read, hard 24 px detectors, no offset correction, no lean: 2.5 ± 0.3 kills per episode (digital linear, bench recipe, 3.5; random 1.6; oracle 15.4 on VizDoom 1.3.1 here); test balanced accuracy 0.79 (bench, plain: 7.9 and 3.9 kills in two sessions) |
+| VizDoom *Basic*, all-optical | demodulated read, the bench's soft detectors, the bench's refitted reference model, no offset correction: test 0.971, recall LEFT / RIGHT / ATTACK 0.98 / 0.97 / 0.90 (bench 0.987); closed loop 100/100 unseen episodes won, 1.2 ± 0.3 steps slower than the oracle (bench 100/100); the raw-frame read takes the same decision on 99.2 % of the frames |
+| VizDoom *Defend the Center*, all-optical | plain reference, raw-frame read, hard 24 px detectors, the bench's detector offsets: 6.9 ± 0.9 kills per episode (digital linear, bench recipe, 3.5; random 1.6; oracle 15.4 on VizDoom 1.3.1 here); test balanced accuracy 0.797 raw-frame / 0.803 demodulated (bench, plain: 7.9 and 3.9 kills in two sessions) |
 | QR encryption | 2 / 2 messages decrypted from one frame, 10/10 reads each (content BER 0.023 / 0.015, from 0.028 / 0.036 offline); flat reference, wrong key and intensity attacks: BER 0.48–0.52, never decoded |
-| Joint training, *Defend the Center* | validation balanced accuracy 0.31 → 0.85; test, raw-frame read, balanced 0.823 (bench 0.763); 3.1 kills per episode (linear 3.5, random 1.5; bench 8.8) |
+| Joint training, *Defend the Center* | validation balanced accuracy 0.31 → 0.85; test, raw-frame read, balanced 0.823 (bench 0.763); with the bench's detector offsets 11.2 ± 0.8 kills per episode (linear 3.5, random 1.5; bench 8.8) |
 
 ## Running
 
