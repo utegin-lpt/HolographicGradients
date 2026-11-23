@@ -72,5 +72,14 @@ jupyter lab
   the first cell of each notebook installs the missing packages (`vizdoom`, `qrcode`, `opencv-python-headless`).
 
 ## Citation
+Kerem Ekec, Bahadır Utku Kesgin, and Uğur Teğin "Single-shot holographic gradients for training wavefronts through disorder" arXiv preprint arXiv:2611.27439 (2026).
 
-Manuscript in preparation.
+@misc{ekec2026singleshotholographicgradientstraining,
+      title={Single-shot holographic gradients for training wavefronts through disorder}, 
+      author={Kerem Ekec and Bahadır Utku Kesgin and Uğur Teğin},
+      year={2026},
+      eprint={2611.27439},
+      archivePrefix={arXiv},
+      primaryClass={physics.optics},
+      url={https://arxiv.org/abs/2611.27439}, 
+}
