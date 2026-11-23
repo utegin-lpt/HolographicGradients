@@ -74,6 +74,7 @@ jupyter lab
 ## Citation
 Kerem Ekec, Bahadır Utku Kesgin, and Uğur Teğin "Single-shot holographic gradients for training wavefronts through disorder" arXiv preprint arXiv:2611.27439 (2026).
 
+```bibtex
 @misc{ekec2026singleshotholographicgradientstraining,
       title={Single-shot holographic gradients for training wavefronts through disorder}, 
       author={Kerem Ekec and Bahadır Utku Kesgin and Uğur Teğin},
@@ -83,3 +84,4 @@ Kerem Ekec, Bahadır Utku Kesgin, and Uğur Teğin "Single-shot holographic grad
       primaryClass={physics.optics},
       url={https://arxiv.org/abs/2611.27439}, 
 }
+```
